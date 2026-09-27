@@ -1,0 +1,183 @@
+{
+  "status": "APPROVED",
+  "public_history_end_exclusive": "2025-12-01",
+  "outcome_end_exclusive": "2026-03-01",
+  "minimum_historical_transactions": 3,
+  "growth_min_rand": 20,
+  "growth_min_relative": 0.25,
+  "growth_min_purchases": 1,
+  "adoption_min_rand": 0,
+  "adoption_min_purchases": 1,
+  "adjustment_items": [
+    "TOTAL/ROUNDING DISCO",
+    "PENSIONER DISCOUNT",
+    "WOW_PROMO"
+  ],
+  "category_mapping": {
+    "Automotive Products": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Beverages": {
+      "Existing-category growth": "Beverages",
+      "New category adoption": "Beverages",
+      "included": true
+    },
+    "Braai & Ice": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Braai & Ice",
+      "included": true
+    },
+    "Breads & rolls": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Breads & rolls",
+      "included": true
+    },
+    "Car Wash": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Carrier Bags": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": false
+    },
+    "Coffee": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Confectionary": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Confectionary",
+      "included": true
+    },
+    "Food & beverage": {
+      "Existing-category growth": "Food & beverage",
+      "New category adoption": "Food & beverage",
+      "included": true
+    },
+    "Frozen food": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Fuel": {
+      "Existing-category growth": "Fuel",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Gas": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "General merchandise": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Groceries": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Groceries",
+      "included": true
+    },
+    "Ice-cream": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Ice-cream",
+      "included": true
+    },
+    "Krispy Kreme": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Lubricants": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Lubricants",
+      "included": true
+    },
+    "Miscellaneous": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "NA": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Perishables": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Print media": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": false
+    },
+    "Promotional items": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Seattle": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Snacking": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Snacking",
+      "included": true
+    },
+    "Tobacco": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Tobacco",
+      "included": true
+    },
+    "Unknown": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": true
+    },
+    "Value added services": {
+      "Existing-category growth": "Other",
+      "New category adoption": "Other",
+      "included": false
+    }
+  },
+  "opportunity_labels": [
+    "Existing-category growth: Beverages",
+    "Existing-category growth: Food & beverage",
+    "Existing-category growth: Fuel",
+    "Existing-category growth: Other",
+    "Inactivity",
+    "New category adoption: Beverages",
+    "New category adoption: Braai & Ice",
+    "New category adoption: Breads & rolls",
+    "New category adoption: Confectionary",
+    "New category adoption: Food & beverage",
+    "New category adoption: Groceries",
+    "New category adoption: Ice-cream",
+    "New category adoption: Lubricants",
+    "New category adoption: Other",
+    "New category adoption: Snacking",
+    "New category adoption: Tobacco",
+    "Stable"
+  ],
+  "normalization": {
+    "CLV_fuel": 2.352825386185113,
+    "CLV_nonfuel": 2.4200904988927476
+  },
+  "calibration_cutoffs": [
+    "2024-09-01",
+    "2024-12-01",
+    "2025-03-01",
+    "2025-06-01",
+    "2025-09-01"
+  ]
+}

@@ -1,0 +1,44 @@
+Hey,
+
+I was confused by this at first too. I don't think it's a bug. The two RMSE numbers aren't going into the formula raw. Each one gets turned into a "higher is better" score first, otherwise a worse RMSE would push your total up.
+
+From my own submissions it looks like they do:
+
+- fuel: 1 − RMSE / 0.74
+
+- non-fuel: 1 − RMSE / 0.816
+
+then weight those 0.3 / 0.3 / 0.4 with the F1.
+
+Plugging in your numbers:
+
+- fuel: 1 − 0.5931/0.740 ≈ 0.1985
+
+- non-fuel: 1 − 0.7237/0.816 ≈ 0.1131
+
+- total: 0.3 × 0.1985 + 0.3 × 0.1131 + 0.4 × 0.5122 ≈ 0.2984
+
+which matches your 0.2983. The 0.740 and 0.816 are just what I backed out from my own scores, so I'm not sure where they come from (maybe some baseline RMSE). It would be nice if Zindi could confirm and add it to the evaluation page.
+
+Thanks for the check - this isn't a bug, and your math is actually right for the formula you assumed. The discrepancy comes from a step upstream of that formula: each metric is normalised before being combined, not combined directly in its raw form.
+
+This challenge uses Zindi's multi-metric evaluation - the general approach is explained there. In short: because RMSE has no fixed upper bound (a value of 0 is a perfect score, but it can grow arbitrarily large) while Weighted F1 is naturally bounded between 0 and 1, the platform rescales the regression metrics onto a comparable footing before applying the 0.3 / 0.3 / 0.4 weighting. That's why the raw CLV Fuel, CLV Non Fuel, and Weighted F1 Opportunity numbers you see aren't what actually gets weighted-averaged - the formula in the description refers to the normalised versions of those metrics, not the raw displayed values.
+
+Thanks for clarifying, @meganomaly.
+
+I've read through the multi-metric evaluation policy, and it makes sense. It also clears up why the displayed component scores don't reproduce the Public Score when combined directly, since the regression metrics are normalised before the weighted combination.
+
+Would it be possible for the normalisation reference values or parameters used for this challenge to be made available to all participants? In particular, I understand from the policy that the regression metrics use an x_max based on the starter notebook's leaderboard score. Having the exact reference values for the two RMSE metrics documented on the competition page would make scoring fully reproducible locally and help everyone track experiments against the actual competition metric, rather than inferring the values from leaderboard submissions.
+
+Thanks again for clarifying this, and I hope the request to make the normalisation details available to everyone will receive your favourable consideration.
+
+
+Can someone please help clarify the following?
+
+1. How is it possible that a transaction can have multiple line items for the same product in different quantities? Shouldn't it be a single transaction line per product in a transaction?
+
+Please see the first two rows in the training dataset
+
+2. I am noticing that for some transactions the LineItemSequence does not always start at 1. What could be the reason?
+
+Does anyone understand why this field is named 'UnitSellingExclPrice' (with Excl) when it seems like the values are inclusive of vat (15%) or is the 'Excl' part not related to vat?

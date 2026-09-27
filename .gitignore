@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+outputs/models/
+train.csv
+test.csv
+SampleSubmission.csv
+outputs/predictions/
+outputs/validation_predictions.csv
+outputs/monthly_eda.csv
+outputs/category_eda.csv
+*.ipynb_checkpoints/

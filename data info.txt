@@ -1,0 +1,46 @@
+About
+The data contains historical loyalty transactions recorded across Sasol forecourt and convenience retail locations. Each row represents an individual line item within a transaction, linked to an anonymised loyalty customer.
+
+Transactions may contain fuel purchases, convenience-store items, or both. Multiple rows can therefore belong to the same transaction, with the same TransactionId and LoyaltyCustomerNumber but different products or line-item sequences.
+
+The training data is provided at transaction level, giving you historical purchase activity for loyalty customers during the training period. You will need to transform these transactions into useful customer-level features.
+
+The test dataset is provided at customer level, with one row for each LoyaltyCustomerNumber (=ID) for whom you need to make predictions. Participants must use the historical transaction data available before the prediction cutoff to construct features for these customers. Because the split is time-based, your models must learn from past customer behaviour to predict what happens next, closely reflecting how the models could be used in a real-world setting.
+
+Your task is to predict each test customer's outcomes during the future three-month period:
+
+their total fuel volume in litres (CLV_fuel)
+their total non-fuel spend in rands (CLV_nonfuel)
+their most likely customer opportunity/behaviour, such as inactivity, new-category adoption, existing-category growth or stable behaviour
+
+Files
+Description
+Files
+Is an example of what your submission file should look like. The order of the rows does not matter, but the names of the "ID" must be correct.
+
+SampleSubmission.csv
+134 KB
+This is transaction data you will use to train your model.
+
+train.csv
+71.8 MB
+This is the test dataset for evaluating your model for the 3 month period succeeding train.csv (Dec 25 - Feb 26).
+
+test.csv
+75 KB
+Data dictionary.
+
+DATA_DICTIONARY.md
+1.2 KB
+Label rules.
+
+LABEL_RULES.md
+4.3 KB
+Label config.
+
+label_config.json
+4.9 KB
+Label rules executable.
+
+label_rules.py
+5.4 KB
