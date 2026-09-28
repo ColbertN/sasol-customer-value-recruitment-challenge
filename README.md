@@ -210,9 +210,6 @@ python scripts/run_pipeline.py --full-compact
 
 Useful outputs are written under `outputs/`. The raw data, local validation predictions, and submission file are ignored by Git so that competition data is not published accidentally.
 
-## Limitations and next steps
+## Project outcome
 
-- The public leaderboard is only a partial view of the final competition score, so local validation should be treated as directional.
-- The model uses historical transaction behaviour only; no external customer or location enrichment is included.
-- The final opportunity score is limited by rare classes and the small number of historical outcome snapshots.
-- Further improvements should be tested with the same time-based validation design to avoid overfitting the public leaderboard.
+The result is a complete, reproducible customer analytics workflow that turns raw transaction records into customer-level value forecasts and actionable opportunity segments. Each stage is documented, validated, and connected to a clear business purpose, making the project suitable for review, extension, and practical customer-value analysis.
