@@ -20,6 +20,13 @@ except Exception:  # pragma: no cover
     HAS_LGBM = False
 
 USE_LGBM = HAS_LGBM and os.environ.get("SASOL_USE_LGBM", "0") == "1"
+try:
+    from catboost import CatBoostClassifier, CatBoostRegressor
+    HAS_CATBOOST = True
+except Exception:  # pragma: no cover
+    HAS_CATBOOST = False
+
+USE_CATBOOST = HAS_CATBOOST and os.environ.get("SASOL_USE_CATBOOST", "0") == "1"
 
 
 def weighted_f1(y_true, y_pred) -> float:
@@ -41,7 +48,7 @@ def _lgb_params(kind: str, candidate: int) -> dict:
     return p
 
 
-def _fit_model(kind, X, y, params, eval_set=None, categorical=False):
+def _fit_model(kind, X, y, params, eval_set=None, categorical=False, sample_weight=None):
     if USE_LGBM:
         cls = LGBMRegressor if kind == "regression" else LGBMClassifier
         model = cls(**params)
@@ -49,13 +56,24 @@ def _fit_model(kind, X, y, params, eval_set=None, categorical=False):
         if eval_set is not None:
             fit_kwargs["eval_set"] = [eval_set]
             fit_kwargs["callbacks"] = [early_stopping(80, verbose=False), log_evaluation(0)]
+        if sample_weight is not None:
+            fit_kwargs["sample_weight"] = sample_weight
         model.fit(X, y, **fit_kwargs)
+        return model
+    if USE_CATBOOST:
+        depth = 6 if int(params.get("num_leaves", 31)) <= 31 else (7 if int(params.get("num_leaves", 31)) <= 63 else 8)
+        common = {"iterations": 450 if kind == "regression" else 350, "learning_rate": float(params.get("learning_rate", 0.04)), "depth": depth, "l2_leaf_reg": float(params.get("reg_lambda", 3.0)), "random_seed": 2026, "thread_count": 1, "verbose": False, "allow_writing_files": False, "random_strength": 0.5}
+        if kind == "regression":
+            model = CatBoostRegressor(**common, loss_function="RMSE")
+        else:
+            model = CatBoostClassifier(**common, loss_function="MultiClass")
+        model.fit(X, y, sample_weight=sample_weight, verbose=False)
         return model
     if kind == "regression":
         model = GradientBoostingRegressor(n_estimators=60, learning_rate=0.04, max_depth=2, min_samples_leaf=15, subsample=0.9, random_state=2026, loss="huber")
     else:
         model = GradientBoostingClassifier(n_estimators=60, learning_rate=0.04, max_depth=2, min_samples_leaf=15, subsample=0.9, random_state=2026)
-    model.fit(X, y)
+    model.fit(X, y, sample_weight=sample_weight)
     return model
 
 
@@ -106,11 +124,18 @@ def tune_classifier(X_train, y_train, X_valid, y_valid, feature_candidates: list
     for cap in feature_candidates:
         selected, importance = select_features(X_train, y_train, "classification", min(cap, X_train.shape[1]), candidate=cap % 4)
         for candidate in range(1 if len(feature_candidates) == 1 else 3):
-            model = _fit_model("classification", X_train[selected], y_train, _lgb_params("classification", candidate), eval_set=(X_valid[selected], y_valid))
-            pred = model.predict(X_valid[selected]).astype(int)
-            score = weighted_f1(y_valid, pred)
-            if best is None or score > best["f1"]:
-                best = {"f1": float(score), "model": model, "features": selected, "candidate": candidate, "cap": cap, "prior_gamma": 0.0}
+            for class_gamma in ([0.0, 0.25, 0.5] if len(feature_candidates) == 1 else [0.0]):
+                counts = np.bincount(y_train)
+                weights = np.ones_like(y_train, dtype=float) if class_gamma == 0 else (len(y_train) / (len(counts) * np.maximum(counts, 1)))[y_train] ** class_gamma
+                model = _fit_model("classification", X_train[selected], y_train, _lgb_params("classification", candidate), eval_set=(X_valid[selected], y_valid), sample_weight=weights)
+                proba = model.predict_proba(X_valid[selected])
+                priors = np.bincount(y_train, minlength=proba.shape[1]).astype(float)
+                priors = priors / priors.sum()
+                for prior_gamma in [-1.0, -0.5, -0.25, 0.0, 0.25]:
+                    pred = np.argmax(proba * np.power(np.maximum(priors, 1e-9), prior_gamma), axis=1).astype(int)
+                    score = weighted_f1(y_valid, pred)
+                    if best is None or score > best["f1"]:
+                        best = {"f1": float(score), "model": model, "features": selected, "candidate": candidate, "cap": cap, "class_gamma": class_gamma, "prior_gamma": prior_gamma}
         all_importance = importance if all_importance is None else all_importance.merge(importance, on="feature", how="outer", suffixes=("", "_new")).fillna(0.0)
     if all_importance is not None and "importance_new" in all_importance:
         imp_cols = [c for c in all_importance.columns if c.startswith("importance")]
@@ -126,11 +151,13 @@ def fit_final_regression(X, y, selected, candidate: int, n_estimators: int | Non
     return _fit_model("regression", X[selected], y, params)
 
 
-def fit_final_classifier(X, y, selected, candidate: int, n_estimators: int | None = None):
+def fit_final_classifier(X, y, selected, candidate: int, n_estimators: int | None = None, class_gamma: float = 0.0):
     params = _lgb_params("classification", candidate)
     if n_estimators is not None and HAS_LGBM:
         params["n_estimators"] = max(100, int(n_estimators))
-    return _fit_model("classification", X[selected], y, params)
+    counts = np.bincount(y)
+    weights = np.ones_like(y, dtype=float) if class_gamma == 0 else (len(y) / (len(counts) * np.maximum(counts, 1)))[y] ** class_gamma
+    return _fit_model("classification", X[selected], y, params, sample_weight=weights)
 
 
 def save_importance(importance: pd.DataFrame, path: str | Path) -> None:

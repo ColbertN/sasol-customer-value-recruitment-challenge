@@ -10,4 +10,10 @@ outputs/predictions/
 outputs/validation_predictions.csv
 outputs/monthly_eda.csv
 outputs/category_eda.csv
+outputs_recent/
+outputs_catboost/
+outputs_catboost_recent/
+outputs_catboost_calibrated/
+outputs_catboost_wide/
+outputs_final/
 *.ipynb_checkpoints/

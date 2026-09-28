@@ -189,6 +189,18 @@ def build_customer_features(
             tab.columns = [f"cat_{window_name}_{metric}_{str(c).replace(' ', '_').replace('&', 'and')}" for c in cats]
             out[tab.columns] = tab
 
+    # The label rules compare the most recent quarter with the previous quarter.
+    # Expose that comparison directly for each original category so adoption and
+    # growth do not have to be reconstructed indirectly by the classifier.
+    for c in cats:
+        safe_c = str(c).replace(" ", "_").replace("&", "and")
+        recent = f"cat_90d_amount_{safe_c}"
+        prior = f"cat_prev90d_amount_{safe_c}"
+        out[prior] = out[f"cat_180d_amount_{safe_c}"] - out[recent]
+        out[f"cat_increment90d_{safe_c}"] = out[recent] - out[prior]
+        out[f"cat_recent_presence_{safe_c}"] = (out[f"cat_90d_baskets_{safe_c}"] > 0).astype("int8")
+        out[f"cat_historical_presence_{safe_c}"] = (out[f"cat_all_baskets_{safe_c}"] > 0).astype("int8")
+
     # Monthly seasonality and momentum for the last 12 calendar months.
     for month_back in range(6):
         month_start = (cutoff.to_period("M") - month_back - 1).start_time

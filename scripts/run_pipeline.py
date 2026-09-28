@@ -41,6 +41,7 @@ def main() -> None:
     ap.add_argument("--config", default=str(ROOT / "label_config.json"))
     ap.add_argument("--out", default=str(ROOT / "outputs"))
     ap.add_argument("--fast", action="store_true", help="Use the low-memory two-snapshot execution profile.")
+    ap.add_argument("--full-compact", action="store_true", help="Use all five snapshots with the compact one-candidate profile.")
     args = ap.parse_args()
     out = Path(args.out)
     for sub in ["figures", "feature_importance", "predictions", "models"]:
@@ -49,7 +50,8 @@ def main() -> None:
     tx = load_transactions(args.train)
     label_tx = load_label_transactions(args.train)
     test_ids = pd.read_csv(args.test, dtype={"ID": "string"})["ID"].astype("string")
-    cutoffs = config["calibration_cutoffs"][-2:] if args.fast else config["calibration_cutoffs"]
+    compact = args.fast or args.full_compact
+    cutoffs = config["calibration_cutoffs"][-2:] if args.fast and not args.full_compact else config["calibration_cutoffs"]
 
     # Build a time-respecting training panel. Each row only sees history before its cutoff.
     panel_parts = []
@@ -58,17 +60,18 @@ def main() -> None:
         labels = raw_labels(label_tx, cutoff, config)
         labels["CLV_fuel"] = np.log1p(labels["fuel_litres"].to_numpy()) / config["normalization"]["CLV_fuel"]
         labels["CLV_nonfuel"] = np.log1p(labels["nonfuel_rand"].to_numpy()) / config["normalization"]["CLV_nonfuel"]
+        labels["asof_month"] = pd.Timestamp(cutoff).to_period("M").ordinal
         f = build_customer_features(tx, cutoff, labels["ID"], config)
         panel_parts.append(f)
         label_parts.append(labels)
         print(f"snapshot {cutoff}: {len(f):,} customers")
     panel = pd.concat(panel_parts, ignore_index=True)
     labels = pd.concat(label_parts, ignore_index=True)
-    panel = panel.merge(labels[["ID", "CLV_fuel", "CLV_nonfuel", "Opportunity"]], on="ID", how="left")
+    panel = panel.merge(labels[["ID", "asof_month", "CLV_fuel", "CLV_nonfuel", "Opportunity"]], on=["ID", "asof_month"], how="left", validate="one_to_one")
     # ID is not a behavioural feature; the time snapshot is retained through asof_month.
     feature_cols = [c for c in panel.columns if c not in {"ID", "CLV_fuel", "CLV_nonfuel", "Opportunity"}]
-    if args.fast:
-        key_prefixes = ("all_", "365d_", "180d_", "90d_", "30d_", "cat_90d_amount_", "cat_90d_baskets_", "month_", "history_days", "asof_month")
+    if compact:
+        key_prefixes = ("all_", "365d_", "180d_", "90d_", "30d_", "cat_all_amount_", "cat_all_baskets_", "cat_180d_amount_", "cat_180d_baskets_", "cat_90d_amount_", "cat_90d_baskets_", "cat_prev90d_", "cat_increment90d_", "cat_recent_presence_", "cat_historical_presence_", "month_", "history_days", "asof_month")
         feature_cols = [c for c in feature_cols if c.startswith(key_prefixes)]
     n_panel_rows, n_panel_columns = panel.shape
     # Materialize a compact feature matrix and release fragmented panel copies before tuning.
@@ -91,7 +94,7 @@ def main() -> None:
         y_train = meta.loc[train_mask, target].to_numpy()
         y_valid = meta.loc[valid_mask, target].to_numpy()
         baseline = _reg_baseline(X.loc[valid_mask], target, config["normalization"][target])
-        best, imp = tune_regression(X_train, y_train, X_valid, y_valid, [32] if args.fast else [48, 96], baseline=baseline)
+        best, imp = tune_regression(X_train, y_train, X_valid, y_valid, [32] if compact else [48, 96], baseline=baseline)
         valid_pred = best["model"].predict(X_valid[best["features"]])
         valid_pred = best["blend"] * baseline + (1.0 - best["blend"]) * np.maximum(0.0, valid_pred * best["alpha"])
         validation_predictions[f"true_{target}"] = y_valid
@@ -104,7 +107,7 @@ def main() -> None:
     encoder.fit(config["opportunity_labels"])
     y_all = encoder.transform(meta["Opportunity"])
     y_train, y_valid = y_all[train_mask.to_numpy()], y_all[valid_mask.to_numpy()]
-    best_cls, imp_cls = tune_classifier(X_train, y_train, X_valid, y_valid, [32] if args.fast else [48, 96])
+    best_cls, imp_cls = tune_classifier(X_train, y_train, X_valid, y_valid, [32] if compact else [48, 96])
     valid_cls = best_cls["model"].predict(X_valid[best_cls["features"]]).astype(int)
     metrics["Opportunity"] = {"weighted_f1": weighted_f1(y_valid, valid_cls), "best": {k: v for k, v in best_cls.items() if k != "model"}, "class_distribution": validation_class_distribution}
     if imp_cls is not None:
@@ -122,8 +125,12 @@ def main() -> None:
         z = float(info["blend"]) * baseline + (1.0 - float(info["blend"])) * pred
         sub[target] = z
     cls_info = metrics["Opportunity"]["best"]
-    cls_model = fit_final_classifier(X_all, y_all, cls_info["features"], int(cls_info["candidate"]))
-    sub["Opportunity"] = encoder.inverse_transform(cls_model.predict(X_test[cls_info["features"]]).astype(int))
+    cls_model = fit_final_classifier(X_all, y_all, cls_info["features"], int(cls_info["candidate"]), class_gamma=float(cls_info.get("class_gamma", 0.0)))
+    cls_proba = cls_model.predict_proba(X_test[cls_info["features"]])
+    cls_priors = np.bincount(y_all, minlength=cls_proba.shape[1]).astype(float)
+    cls_priors = cls_priors / cls_priors.sum()
+    cls_pred = np.argmax(cls_proba * np.power(np.maximum(cls_priors, 1e-9), float(cls_info.get("prior_gamma", 0.0))), axis=1).astype(int)
+    sub["Opportunity"] = encoder.inverse_transform(cls_pred)
     sub = sub[["ID", "CLV_fuel", "CLV_nonfuel", "Opportunity"]]
     sub.to_csv(out / "predictions" / "submission.csv", index=False, float_format="%.17g")
     validation_predictions["true_opportunity"] = encoder.inverse_transform(y_valid)
